@@ -10,9 +10,24 @@ import UIKit
 import Foundation
 
 class ViewController: UIViewController {
-
+    
+    @IBOutlet var imageView1: UIImageView!
+    @IBOutlet var imageView2: UIImageView!
+    @IBOutlet var imageView3: UIImageView!
+    
+    @IBOutlet var image1Title: UILabel!
+    
+    var recipe = [RecipeCard]()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        //Call parsing method
+        parse()
+    }
+    
+    
+    func parse() {
         
         // 3 Latest feeds API
         let headers = [
@@ -25,46 +40,54 @@ class ViewController: UIViewController {
                                             timeoutInterval: 10.0)
         request.httpMethod = "GET"
         request.allHTTPHeaderFields = headers
-
+        
         let session = URLSession.shared
         let dataTask = session.dataTask(with: request as URLRequest, completionHandler: { (data, response, error) -> Void in
             if (error != nil) {
                 print(error!)
             }
-            
+
             guard let response = response as? HTTPURLResponse,
                 response.statusCode == 200,
                 let data = data
                 else { return }
-            
+
             do {
                 //De-Serialize data object
                 if let json = try JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] {
-                    
+
                     for firstLevelItem in json {
                         guard let result = firstLevelItem.value as? [[String: Any]]
-                            else { continue
-                        }
-                        for item in result {
-                            guard let items = item["item"] as? [[String: Any]]
-                                else { continue
-                            }
+                            else { return
                         }
                         
+                        for child in result {
+                            guard let item = child["item"] as? [String: Any],
+                                  let name = item["name"] as? String,
+                                  let image = item["thumbnail_url"] as? String
+                                else { return
+                            }
+                            self.recipe.append(RecipeCard(name: name, imgString: image))
+                        }
+                        
+                        DispatchQueue.main.async {
+                            self.imageView1.image = self.recipe[0].img
+                            self.imageView2.image = self.recipe[1].img
+                            self.imageView3.image = self.recipe[2].img
+                            
+                            self.image1Title.text = self.recipe[0].name
+                        }
                     }
                 }
+
             }
             catch {
                 print(error.localizedDescription)
-                assertionFailure();
+                //assertionFailure();
             }
-            
-        
         })
-        
         dataTask.resume()
     }
-
-
+    
+    
 }
-
