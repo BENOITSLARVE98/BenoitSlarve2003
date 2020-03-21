@@ -11,9 +11,7 @@ import Foundation
 
 class ViewController: UIViewController, UISearchBarDelegate {
     
-    @IBOutlet var imageView1: UIImageView!
-    @IBOutlet var imageView2: UIImageView!
-    @IBOutlet var imageView3: UIImageView!
+    @IBOutlet var imageViews: [UIImageView]!
     
     @IBOutlet var image1Title: UILabel!
     @IBOutlet var image2Title: UILabel!
@@ -31,6 +29,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
         //Call parsing method
         parseFeed()
         setUpSearchBar()
+        AddTapGesturesToImages()
     }
     
     //Search Bar
@@ -45,8 +44,9 @@ class ViewController: UIViewController, UISearchBarDelegate {
         searchBar.resignFirstResponder()
         recipeSearchArray = [RecipeCard]()
     }
-    func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) {
-        
+
+    @IBAction func imageTapped(_ sender: AnyObject ) {
+        print("tapped")
     }
     
     func parseSearch() {
@@ -92,9 +92,9 @@ class ViewController: UIViewController, UISearchBarDelegate {
                         }
                         
                         DispatchQueue.main.async {
-                            self.imageView1.image = self.recipeSearchArray[0].img
-                            self.imageView2.image = self.recipeSearchArray[1].img
-                            self.imageView3.image = self.recipeSearchArray[2].img
+                            self.imageViews[0].image = self.recipeSearchArray[0].img
+                            self.imageViews[1].image = self.recipeSearchArray[1].img
+                            self.imageViews[2].image = self.recipeSearchArray[2].img
                             
                             self.image1Title.text = self.recipeSearchArray[0].name
                             self.image2Title.text = self.recipeSearchArray[1].name
@@ -156,9 +156,9 @@ class ViewController: UIViewController, UISearchBarDelegate {
                         }
                         
                         DispatchQueue.main.async {
-                            self.imageView1.image = self.recipe[0].img
-                            self.imageView2.image = self.recipe[1].img
-                            self.imageView3.image = self.recipe[2].img
+                            self.imageViews[0].image = self.recipe[0].img
+                            self.imageViews[1].image = self.recipe[1].img
+                            self.imageViews[2].image = self.recipe[2].img
                             
                             self.image1Title.text = self.recipe[0].name
                             self.image2Title.text = self.recipe[1].name
@@ -176,5 +176,19 @@ class ViewController: UIViewController, UISearchBarDelegate {
         dataTask.resume()
     }
     
+    
+    func AddTapGesturesToImages() {
+        for view in self.imageViews {
+            // hide images
+            view.image = UIImage(named: " ")
+            // define the gesture
+            let gesture = UITapGestureRecognizer(target: self, action: #selector(self.imageTapped(_:)))
+            // assign the gesture to the imageView
+            view.addGestureRecognizer(gesture)
+            // enable user interaction to item
+            view.isUserInteractionEnabled = true
+        }
+    }
+ 
     
 }
