@@ -23,11 +23,13 @@ class ViewController: UIViewController, UISearchBarDelegate {
     var recipeSearchArray = [RecipeCard]()
     var searchString = ""
     
+    var Index = 0
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         //Call parsing method
-        parseFeed()
+        //parseFeed()
         setUpSearchBar()
         AddTapGesturesToImages()
     }
@@ -46,7 +48,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
     }
 
     @IBAction func imageTapped(_ sender: AnyObject ) {
-        print("tapped")
+        performSegue(withIdentifier: "GoToDetailsPage", sender: self)
     }
     
     func parseSearch() {
@@ -78,24 +80,50 @@ class ViewController: UIViewController, UISearchBarDelegate {
                 //De-Serialize data object
                 if let json = try JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] {
 
+                    var arrayOfIngredients = [String]()
+                    
                     for firstLevelItem in json {
                         guard let result = firstLevelItem.value as? [[String: Any]]
-                            else { return
+                            else { continue
                         }
                         
                         for child in result {
                             guard let name = child["name"] as? String,
-                                  let image = child["thumbnail_url"] as? String
-                                else { return
+                                  let image = child["thumbnail_url"] as? String,
+                                  let video = child["original_video_url"] as? String,
+                                  let instructions = child["instructions"] as? [[String: Any]],
+                                  let sections = child["sections"] as? [[String: Any]]
+                                else { continue
                             }
-                            self.recipeSearchArray.append(RecipeCard(name: name, imgString: image))
+                            
+                            var numbersArray = [Int]()
+                            var instructionsArray = [String]()
+                            for item in instructions {
+                                guard let stepNumber = item["position"] as? Int,
+                                      let instructionText = item["display_text"] as? String
+                                    else { continue
+                                }
+                                numbersArray.append(stepNumber)
+                                instructionsArray.append(instructionText)
+                            }
+                            
+                            for item in sections {
+                                guard let components = item["components"] as? [[String: Any]]
+                                    else { continue
+                                }
+                                for item in components {
+                                    let ingredient = item["raw_text"] as? String
+                                    arrayOfIngredients.append(ingredient ?? "")
+                                }
+                            }
+                            
+                            self.recipeSearchArray.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients, videoUrl: video, numbersArray: numbersArray, instructionsArray: instructionsArray))
                         }
-                        
                         DispatchQueue.main.async {
                             self.imageViews[0].image = self.recipeSearchArray[0].img
                             self.imageViews[1].image = self.recipeSearchArray[1].img
                             self.imageViews[2].image = self.recipeSearchArray[2].img
-                            
+
                             self.image1Title.text = self.recipeSearchArray[0].name
                             self.image2Title.text = self.recipeSearchArray[1].name
                             self.image3Title.text = self.recipeSearchArray[2].name
@@ -114,13 +142,14 @@ class ViewController: UIViewController, UISearchBarDelegate {
     
     func parseFeed() {
         
+        
         // 3 Latest feeds API
         let headers = [
             "x-rapidapi-host": "tasty.p.rapidapi.com",
             "x-rapidapi-key": "59d338597cmsh4f789cced9df6a2p1b0e7fjsna39bda851ccd"
         ]
 
-        let request = NSMutableURLRequest(url: NSURL(string: "https://tasty.p.rapidapi.com/feeds/list?size=3&timezone=%252B0700&vegetarian=false&from=3")! as URL,
+        let request = NSMutableURLRequest(url: NSURL(string: "https://tasty.p.rapidapi.com/feeds/list?size=5&timezone=%252B0700&vegetarian=false&from=3")! as URL,
                                                 cachePolicy: .useProtocolCachePolicy,
                                             timeoutInterval: 10.0)
         request.httpMethod = "GET"
@@ -140,33 +169,46 @@ class ViewController: UIViewController, UISearchBarDelegate {
             do {
                 //De-Serialize data object
                 if let json = try JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] {
+                    
+                    var arrayOfIngredients = [String]()
 
                     for firstLevelItem in json {
                         guard let result = firstLevelItem.value as? [[String: Any]]
-                            else { return
+                            else { continue
                         }
                         
                         for child in result {
                             guard let item = child["item"] as? [String: Any],
                                   let name = item["name"] as? String,
-                                  let image = item["thumbnail_url"] as? String
-                                else { return
+                                  let image = item["thumbnail_url"] as? String,
+                                  let video = child["original_video_url"] as? String,
+                                  let sections = item["sections"] as? [[String: Any]]
+                                else { continue
                             }
-                            self.recipe.append(RecipeCard(name: name, imgString: image))
+                            
+                            for item in sections {
+                                guard let components = item["components"] as? [[String: Any]]
+                                    else { continue
+                                }
+                                for item in components {
+                                    let ingredient = item["raw_text"] as? String
+                                    arrayOfIngredients.append(ingredient ?? "")
+                                }
+                            }
+                            
+                            //self.recipe.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients,videoUrl: video))
                         }
-                        
                         DispatchQueue.main.async {
                             self.imageViews[0].image = self.recipe[0].img
                             self.imageViews[1].image = self.recipe[1].img
                             self.imageViews[2].image = self.recipe[2].img
-                            
+
                             self.image1Title.text = self.recipe[0].name
                             self.image2Title.text = self.recipe[1].name
                             self.image3Title.text = self.recipe[2].name
                         }
                     }
                 }
-
             }
             catch {
                 print(error.localizedDescription)
@@ -189,6 +231,14 @@ class ViewController: UIViewController, UISearchBarDelegate {
             view.isUserInteractionEnabled = true
         }
     }
- 
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        if let destination = segue.destination as? DetailsViewController {
+            //destination.Ingredients = recipeSearchArray[0].ingredient
+            destination.recipe = recipeSearchArray[0]
+        }
+    }
     
 }
+
