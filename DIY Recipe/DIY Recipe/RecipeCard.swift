@@ -14,11 +14,18 @@ class RecipeCard {
     //properties
     var name: String
     var img: UIImage!
+    var videoUrl: String
+    var numbersArray: [Int]!
+    var instructionsArray: [String]!
+    var ingredient: [String]
 
     /* Initializers */
-    init(name: String, imgString: String) {
+    init(name: String, imgString: String, ingredient: [String], videoUrl: String, numbersArray: [Int], instructionsArray: [String]!) {
         self.name = name
-
+        self.ingredient = ingredient
+        self.videoUrl = videoUrl
+        self.numbersArray = numbersArray
+        self.instructionsArray = instructionsArray
         //Our init will take care of dowloading the image
         if let url = URL(string: imgString) {
 
