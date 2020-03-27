@@ -19,8 +19,11 @@ class ViewController: UIViewController, UISearchBarDelegate {
     
     @IBOutlet var searchBar: UISearchBar!
     
+    @IBOutlet var email: UITextField!
+    @IBOutlet var password: UITextField!
+    
+    
     var recipe = [RecipeCard]()
-    var recipeSearchArray = [RecipeCard]()
     var searchString = ""
     
     var Index = 0
@@ -29,7 +32,8 @@ class ViewController: UIViewController, UISearchBarDelegate {
         super.viewDidLoad()
         
         //Call parsing method
-        //parseFeed()
+        parseFeed()
+        self.navigationItem.setHidesBackButton(true, animated: true);
         setUpSearchBar()
         AddTapGesturesToImages()
     }
@@ -44,10 +48,11 @@ class ViewController: UIViewController, UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         parseSearch()
         searchBar.resignFirstResponder()
-        recipeSearchArray = [RecipeCard]()
+        recipe = [RecipeCard]()
     }
 
     @IBAction func imageTapped(_ sender: AnyObject ) {
+        Index = sender.view.tag
         performSegue(withIdentifier: "GoToDetailsPage", sender: self)
     }
     
@@ -117,17 +122,71 @@ class ViewController: UIViewController, UISearchBarDelegate {
                                 }
                             }
                             
-                            self.recipeSearchArray.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients, videoUrl: video, numbersArray: numbersArray, instructionsArray: instructionsArray))
+                            self.recipe.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients, videoUrl: video, numbersArray: numbersArray, instructionsArray: instructionsArray))
                         }
+                        
                         DispatchQueue.main.async {
-                            self.imageViews[0].image = self.recipeSearchArray[0].img
-                            self.imageViews[1].image = self.recipeSearchArray[1].img
-                            self.imageViews[2].image = self.recipeSearchArray[2].img
-
-                            self.image1Title.text = self.recipeSearchArray[0].name
-                            self.image2Title.text = self.recipeSearchArray[1].name
-                            self.image3Title.text = self.recipeSearchArray[2].name
+                            // Reset UI everytime parseSearch function is called
+                            self.imageViews[0].isHidden = false
+                            self.imageViews[1].isHidden = false
+                            self.imageViews[2].isHidden = false
+                            self.image1Title.isHidden = false
+                            self.image2Title.isHidden = false
+                            self.image3Title.isHidden = false
                         }
+                        
+                        // Conditionals to verify if the array element count matches screen maximum recipe cards
+                        if self.recipe.count == 0 {
+                            DispatchQueue.main.async {
+                                self.imageViews[0].isHidden = true
+                                self.imageViews[1].isHidden = true
+                                self.imageViews[2].isHidden = true
+
+                                self.image1Title.isHidden = true
+                                self.image2Title.isHidden = true
+                                self.image3Title.isHidden = true
+                                
+                                // Diplay some message if the recipe searched is not found
+                                let message: String = "Not Found!!"
+                                let alertController = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+                                alertController.addAction(UIAlertAction(title: "OK", style: .cancel, handler: nil))
+                                self.present(alertController, animated: true)
+                            }
+                        }
+                        else if self.recipe.count == 1 {
+                            DispatchQueue.main.async {
+                                self.imageViews[0].image = self.recipe[0].img
+                                self.imageViews[1].isHidden = true
+                                self.imageViews[2].isHidden = true
+
+                                self.image1Title.text = self.recipe[0].name
+                                self.image2Title.isHidden = true
+                                self.image3Title.isHidden = true
+                            }
+                        }
+                        else if (self.recipe.count == 2) {
+                            DispatchQueue.main.async {
+                                self.imageViews[0].image = self.recipe[0].img
+                                self.imageViews[1].image = self.recipe[1].img
+                                self.imageViews[2].isHidden = true
+
+                                self.image1Title.text = self.recipe[0].name
+                                self.image2Title.text = self.recipe[1].name
+                                self.image3Title.isHidden = true
+                            }
+                        }
+                        else {
+                            DispatchQueue.main.async {
+                                self.imageViews[0].image = self.recipe[0].img
+                                self.imageViews[1].image = self.recipe[1].img
+                                self.imageViews[2].image = self.recipe[2].img
+
+                                self.image1Title.text = self.recipe[0].name
+                                self.image2Title.text = self.recipe[1].name
+                                self.image3Title.text = self.recipe[2].name
+                            }
+                        }
+                        
                     }
                 }
 
@@ -149,7 +208,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
             "x-rapidapi-key": "59d338597cmsh4f789cced9df6a2p1b0e7fjsna39bda851ccd"
         ]
 
-        let request = NSMutableURLRequest(url: NSURL(string: "https://tasty.p.rapidapi.com/feeds/list?size=5&timezone=%252B0700&vegetarian=false&from=3")! as URL,
+        let request = NSMutableURLRequest(url: NSURL(string: "https://tasty.p.rapidapi.com/recipes/list?tags=under_30_minutes&from=0&sizes=2")! as URL,
                                                 cachePolicy: .useProtocolCachePolicy,
                                             timeoutInterval: 10.0)
         request.httpMethod = "GET"
@@ -178,12 +237,23 @@ class ViewController: UIViewController, UISearchBarDelegate {
                         }
                         
                         for child in result {
-                            guard let item = child["item"] as? [String: Any],
-                                  let name = item["name"] as? String,
-                                  let image = item["thumbnail_url"] as? String,
+                            guard let name = child["name"] as? String,
+                                  let image = child["thumbnail_url"] as? String,
                                   let video = child["original_video_url"] as? String,
-                                  let sections = item["sections"] as? [[String: Any]]
+                                  let instructions = child["instructions"] as? [[String: Any]],
+                                  let sections = child["sections"] as? [[String: Any]]
                                 else { continue
+                            }
+                            
+                            var numbersArray = [Int]()
+                            var instructionsArray = [String]()
+                            for item in instructions {
+                                guard let stepNumber = item["position"] as? Int,
+                                      let instructionText = item["display_text"] as? String
+                                    else { continue
+                                }
+                                numbersArray.append(stepNumber)
+                                instructionsArray.append(instructionText)
                             }
                             
                             for item in sections {
@@ -196,7 +266,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
                                 }
                             }
                             
-                            //self.recipe.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients,videoUrl: video))
+                            self.recipe.append(RecipeCard(name: name, imgString: image, ingredient: arrayOfIngredients, videoUrl: video, numbersArray: numbersArray, instructionsArray: instructionsArray))
                         }
                         DispatchQueue.main.async {
                             self.imageViews[0].image = self.recipe[0].img
@@ -236,7 +306,7 @@ class ViewController: UIViewController, UISearchBarDelegate {
         
         if let destination = segue.destination as? DetailsViewController {
             //destination.Ingredients = recipeSearchArray[0].ingredient
-            destination.recipe = recipeSearchArray[0]
+            destination.recipe = recipe[Index]
         }
     }
     
